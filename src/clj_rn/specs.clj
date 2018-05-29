@@ -7,9 +7,12 @@
 ;;; config
 
 (s/def :config/main (s/merge (s/keys :req-un [:config/name]
-                                     :opt-un [:config/js-modules :config/resource-dirs])
-                             (s/map-of #{:name :js-modules :resource-dirs} any?)))
+                                     :opt-un [:config/js-modules
+                                              :config/resource-dirs
+                                              :config/figwheel-bridge])
+                             (s/map-of #{:name :js-modules :resource-dirs :figwheel-bridge} any?)))
 
 (s/def :config/name (and not-empty-string? #(re-matches #"^[A-Z][A-Za-z0-9]+$" %)))
 (s/def :config/js-modules (s/coll-of not-empty-string?))
 (s/def :config/resource-dirs (s/coll-of not-empty-string?))
+(s/def :config/figwheel-bridge not-empty-string?)

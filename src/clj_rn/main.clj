@@ -94,24 +94,28 @@
   (let [{:keys [build-ids
                 android-device
                 ios-device
-                figwheel-port]} (parse-cli-opts args rebuild-index-task-opts)
-        hosts-map               {:android (core/resolve-dev-host :android android-device)
-                                 :ios     (core/resolve-dev-host :ios ios-device)}]
+                figwheel-port]}   (parse-cli-opts args rebuild-index-task-opts)
+        hosts-map                 {:android (core/resolve-dev-host :android android-device)
+                                   :ios     (core/resolve-dev-host :ios ios-device)}
+        {:keys [name
+                js-modules
+                resource-dirs
+                figwheel-bridge]} (get-main-config)]
+    (when-not figwheel-bridge
+     (core/copy-figwheel-bridge))
     (core/write-env-dev hosts-map figwheel-port)
     (doseq [build-id build-ids
-            :let     [host-ip                 (get hosts-map build-id)
-                      platform-name           (if (= build-id :ios) "iOS" "Android")
-                      {:keys [name
-                              js-modules
-                              resource-dirs]} (get-main-config)]]
-      (core/rebuild-index-js build-id {:app-name      name
-                                       :host-ip       host-ip
-                                       :js-modules    js-modules
-                                       :resource-dirs resource-dirs})
+            :let     [host-ip       (get hosts-map build-id)
+                      platform-name (if (= build-id :ios) "iOS" "Android")]]
+      (core/rebuild-index-js build-id {:app-name        name
+                                       :host-ip         host-ip
+                                       :js-modules      js-modules
+                                       :resource-dirs   resource-dirs
+                                       :figwheel-bridge figwheel-bridge})
       (when (= build-id :ios)
         (core/update-ios-rct-web-socket-executor host-ip)
         (utils/log "Host in RCTWebSocketExecutor.m was updated"))
-        (utils/log (format "Dev server host for %s: %s" platform-name host-ip)))))
+      (utils/log (format "Dev server host for %s: %s" platform-name host-ip)))))
 
 ;;; Help
 

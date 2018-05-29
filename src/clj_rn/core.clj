@@ -6,6 +6,12 @@
 
 (def debug-host-rx #"host]\s+\?:\s+@\".*\";")
 
+(defn copy-resource-file! [resource-path target-path]
+  (let [resource-file (io/resource resource-path)
+        target-file   (io/file target-path)]
+    (with-open [in (io/input-stream resource-file)]
+      (io/copy in target-file))))
+
 (defn edit-file-contents! [path replacements-map]
   (as-> (slurp path) $
     (reduce (fn [contents [match replacement]]
@@ -76,7 +82,7 @@
                   with-out-str))
       ((partial spit "env/dev/env/config.cljs"))))
 
-(defn rebuild-index-js [platform {:keys [app-name host-ip js-modules resource-dirs]}]
+(defn rebuild-index-js [platform {:keys [app-name host-ip js-modules resource-dirs figwheel-bridge]}]
   (let [modules     (->> (for [dir resource-dirs]
                            (->> (file-seq (io/file dir))
                                 (filter #(and (not (re-find #"DS_Store" (str %)))
@@ -92,12 +98,13 @@
         modules-map (zipmap modules modules)
         target-file (str "index." (if (= :ios platform) "ios" "android")  ".js")]
     (try
-      (-> "var modules={};%s;\nrequire('figwheel-bridge').withModules(modules).start('%s','%s','%s');"
+      (-> "var modules={};%s;\nrequire('%s').withModules(modules).start('%s','%s','%s');"
           (format
            (->> modules-map
                 (map (fn [[module path]]
                        (str "modules['" module "']=require('" path "')")))
                 (str/join ";"))
+           (or figwheel-bridge "./target/figwheel-bridge.js")
            app-name
            (name platform)
            host-ip)
@@ -109,3 +116,8 @@
 (defn update-ios-rct-web-socket-executor [host]
   (edit-file-contents! "node_modules/react-native/Libraries/WebSocket/RCTWebSocketExecutor.m"
                        {debug-host-rx (str "host] ?: @\"" host "\";")}))
+
+(defn copy-figwheel-bridge []
+  (io/make-parents "target/.")
+  (copy-resource-file! "figwheel-bridge.js" "target/figwheel-bridge.js")
+  (utils/log "Copied figwheel-bridge.js"))
