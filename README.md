@@ -27,7 +27,32 @@ clj -R:repl -m clj-rn.main rebuild-index --help
 
 ```
 $ clj -R:repl -m clj-rn.main rebuild-index -p android,ios -a genymotion -i real --figwheel-port 3456
+
 ```
+
+### Upgrading from an existing project
+
+- If your existing project has a `figwheel-bridge.js` in the root directory, it can be deleted now as `figwheel` task of `clj-rn.main` would create it for you and place it in `target` directory, it is being required by `index.*.js` every time when starting the app with figwheel. Alternatively, you can choose to use your own JS bridge by setting a variable named `:figwheel-bridge` in `clj-rn.conf.edn`, the value should be that of the JS module name. e.g. `./resources/bridge` 
+- If you are using the default `figwheel-bridge.js` provided by `clj-rn` (originally from `re-natal`), make sure that `cljsbuild` compiler options for `dev` environment look like this below:
+```
+{:ios
+   {:source-paths ["src"]
+    :compiler     {:output-to     "target/ios/index.js"
+                   :main          "env.ios.main"
+                   :output-dir    "target/ios"
+                   :optimizations :none
+                   :target        :nodejs}}
+   :android
+   {:source-paths ["src"]
+    :compiler     {:output-to     "target/android/index.js"
+                   :main          "env.android.main"
+                   :output-dir    "target/android"
+                   :optimizations :none
+                   :target        :nodejs}}}
+```
+Note: it also supports `:preloads` and `:closure-defines` options now thanks to the work done by `re-natal`.
+
+- Supported `figwheel-sidecar` version => `0.5.14`.
 
 ## Thanks
 
