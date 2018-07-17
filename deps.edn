@@ -1,2 +1,4 @@
-{:deps  {org.clojure/tools.cli {:mvn/version "0.3.7"}}
- :paths ["src" "resources"]}
+{:paths ["src" "resources"]
+ :deps  {org.clojure/tools.cli {:mvn/version "0.3.7"}
+         figwheel-sidecar      {:mvn/version "0.5.16"
+                                :exclusions  [com.google.javascript/closure-compiler]}}}
