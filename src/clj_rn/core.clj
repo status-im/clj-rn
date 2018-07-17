@@ -2,9 +2,30 @@
   (:require [clj-rn.utils :as utils]
             [clojure.java.io :as io]
             [clojure.pprint :as pprint]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [clj-rn.shell :as shell]
+            [figwheel-sidecar.repl-api :as ra]
+            [clojure.java.io :as io]
+            [clj-rn.utils :as utils]
+            [clojure.edn :as edn]
+            [clojure.spec.alpha :as spec]
+            clj-rn.specs))
 
 (def debug-host-rx #"host]\s+\?:\s+@\".*\";")
+(def react-native-cli "node_modules/react-native/local-cli/cli.js")
+
+(defn get-main-config []
+  (try
+    (let [usr-config-file "clj-rn.conf.edn"]
+      (when-not (.isFile (io/as-file usr-config-file))
+        (throw (Exception. "Please create a clj-rn.conf.edn config file")))
+      (let [config (edn/read-string (slurp usr-config-file))]
+        (when-not (spec/valid? :config/main config)
+          (throw (Exception. "Invalid config.")))
+        config))
+    (catch Exception e
+      (utils/println-colorized (.getMessage e) shell/color-red)
+      (System/exit 1))))
 
 (defn copy-resource-file! [resource-path target-path]
   (let [resource-file (io/resource resource-path)
@@ -82,33 +103,39 @@
                   with-out-str))
       ((partial spit "env/dev/env/config.cljs"))))
 
-(defn rebuild-index-js [platform {:keys [app-name host-ip js-modules resource-dirs figwheel-bridge]}]
-  (let [modules     (->> (for [dir resource-dirs]
-                           (->> (file-seq (io/file dir))
-                                (filter #(and (not (re-find #"DS_Store" (str %)))
-                                              (.isFile %)))
-                                (map (fn [file] (when-let [unix-path (->> file .toPath .iterator iterator-seq (str/join "/"))]
-                                                  (-> (str "./" unix-path)
-                                                      (str/replace "\\" "/")
-                                                      (str/replace "@2x" "")
-                                                      (str/replace "@3x" "")))))))
-                         flatten
-                         (concat js-modules ["react" "react-native" "create-react-class"])
-                         distinct)
-        modules-map (zipmap modules modules)
-        target-file (str "index." (if (= :ios platform) "ios" "android")  ".js")]
+(defn get-modules
+  [resource-dirs js-modules]
+  (->> (for [dir resource-dirs]
+         (->> (file-seq (io/file dir))
+              (filter #(and (not (re-find #"DS_Store" (str %)))
+                            (.isFile %)))
+              (map (fn [file] (when-let [unix-path (->> file .toPath .iterator iterator-seq (str/join "/"))]
+                                (-> (str "./" unix-path)
+                                    (str/replace "\\" "/")
+                                    (str/replace "@2x" "")
+                                    (str/replace "@3x" "")))))))
+       flatten
+       (concat js-modules ["react" "react-native" "create-react-class"])
+       distinct))
+
+(defn generate-modules-map
+  [modules]
+  (str/join ";" (map #(str "modules['" % "']=require('" % "')") modules)))
+
+(defn rebuild-index-js
+  [platform {:keys [app-name host-ip js-modules resource-dirs figwheel-bridge]}]
+  (let [target-file (str "index." (if (= :ios platform) "ios" "android")  ".js")
+        modules (get-modules resource-dirs js-modules)]
     (try
-      (-> "var modules={};%s;\nrequire('%s').withModules(modules).start('%s','%s','%s');"
-          (format
-           (->> modules-map
-                (map (fn [[module path]]
-                       (str "modules['" module "']=require('" path "')")))
-                (str/join ";"))
-           (or figwheel-bridge "./target/figwheel-bridge.js")
-           app-name
-           (name platform)
-           host-ip)
-          ((partial spit target-file)))
+      (spit
+       target-file
+       (format
+        "var modules={};%s;\nrequire('%s').withModules(modules).start('%s','%s','%s');"
+        (generate-modules-map modules)
+        (or (str/replace figwheel-bridge #"\.js" "") "./target/figwheel-bridge")
+        app-name
+        (name platform)
+        host-ip))
       (utils/log (str target-file " was regenerated"))
       (catch Exception e
         (utils/log-err (.getMessage e))))))
@@ -121,3 +148,63 @@
   (io/make-parents "target/.")
   (copy-resource-file! "figwheel-bridge.js" "target/figwheel-bridge.js")
   (utils/log "Copied figwheel-bridge.js"))
+
+(defn rebuild-index-files
+  [build-ids hosts-map]
+  (let [{:keys [js-modules name resource-dirs figwheel-bridge]} (get-main-config)]
+    (when-not figwheel-bridge (copy-figwheel-bridge))
+    (doseq [build-id build-ids
+            :let [host-ip (get hosts-map build-id)
+                  platform-name (if (= build-id :ios) "iOS" "Android")]]
+      (rebuild-index-js build-id {:app-name        name
+                                  :host-ip         host-ip
+                                  :js-modules      js-modules
+                                  :resource-dirs   resource-dirs
+                                  :figwheel-bridge figwheel-bridge})
+      (when (= build-id :ios)
+        (update-ios-rct-web-socket-executor host-ip)
+        (utils/println-colorized
+         "Host in RCTWebSocketExecutor.m was updated"
+         shell/color-green))
+      (utils/println-colorized
+       (format "Dev server host for %s: %s" platform-name host-ip)
+       shell/color-green))))
+
+(defn- execute-react-native-cli
+  ([command] (execute-react-native-cli command false))
+  ([command async?]
+   (let [full-command (str "node " react-native-cli " " command)]
+     (if async?
+       (future (shell/exec full-command))
+       (shell/exec full-command)))))
+
+(defn- run-builds
+  [build-ids]
+  (doseq [build-id build-ids]
+    (execute-react-native-cli (str "run-" (name build-id)))))
+
+(defn- check-react-native-instalation []
+  (when-not (.exists (io/file react-native-cli))
+    (utils/println-colorized "react-native is not installed locally. If you don't have it in 'package.json' run 'npm install react-native --save'. Note what globally installed react-native won't be used." shell/color-red)
+    (System/exit 1)))
+
+(defn watch
+  [{:keys [build-ids android-device ios-device start-figwheel start-app start-cljs-repl]}]
+  (let [{:keys [figwheel-options builds]} (get-main-config)
+        hosts-map {:android (resolve-dev-host :android android-device)
+                   :ios     (resolve-dev-host :ios ios-device)}]
+    (check-react-native-instalation)
+    (enable-source-maps)
+    (write-env-dev hosts-map)
+    (rebuild-index-files build-ids hosts-map)
+    (execute-react-native-cli "start" true)
+    (when start-figwheel
+      (ra/start-figwheel!
+       {:build-ids build-ids
+        :all-builds builds
+        :figwheel-options figwheel-options}))
+    (when start-app (run-builds build-ids))
+    (when (and start-figwheel start-cljs-repl)
+      (ra/cljs-repl)
+      (when (:nrepl-port figwheel-options)
+        (spit ".nrepl-port" (:nrepl-port figwheel-options))))))

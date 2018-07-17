@@ -1,0 +1,29 @@
+{:name "CljRnExample"
+
+ ;; dev builds from project.clj
+ :builds [{:id           :ios
+           :source-paths ["src" "env/dev"]
+           :figwheel     true
+           :compiler     {:output-to     "target/ios/app.js"
+                          :main          "env.ios.main"
+                          :output-dir    "target/ios"
+                          :optimizations :none}}
+          {:id           :android
+           :source-paths ["src" "env/dev"]
+           :figwheel     true
+           :compiler     {:output-to     "target/android/app.js"
+                          :main          "env.android.main"
+                          :output-dir    "target/android"
+                          :optimizations :none}}]
+
+ :js-modules ["realm"]
+ :resource-dirs  ["images"]
+
+ ;; Don't set it if you don't have this file in your repo
+ :figwheel-bridge "figwheel-bridge.js"
+
+ ;; All options https://github.com/bhauman/lein-figwheel/blob/0f62d6d043abb6156393fd167f6c1496c5439689/sidecar/resources/conf-fig-docs/FigwheelOptions.txt
+ :figwheel-options {:nrepl-port 7888
+                    :nrepl-middleware ["cider.nrepl/cider-middleware"
+                                       "refactor-nrepl.middleware/wrap-refactor"
+                                       "cemerick.piggieback/wrap-cljs-repl"]}}
