@@ -49,6 +49,7 @@ $ clj -R:dev -m clj-rn.main watch -p android,ios -a genymotion -i real
 - `:resource-dirs` Folders with images and other resources
 - `:figwheel-bridge.js"` re-natal adds this file when you init project. If you don't have it, you can skip this options
 - `:figwheel-options` options for fegwheel server. List of all options https://github.com/bhauman/lein-figwheel/blob/0f62d6d043abb6156393fd167f6c1496c5439689/sidecar/resources/conf-fig-docs/FigwheelOptions.txt
+- `:run-options` Those options will be passed to `react-native run-*`
 
 ## Thanks
 
