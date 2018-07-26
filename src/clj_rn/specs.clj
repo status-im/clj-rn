@@ -11,13 +11,23 @@
                                      :opt-un [:config/js-modules
                                               :config/resource-dirs
                                               :config/figwheel-bridge
-                                              :config/figwheel-options])
+                                              :config/figwheel-options
+                                              :config/run-options])
                              (s/map-of #{:name
                                          :js-modules
                                          :resource-dirs
                                          :figwheel-bridge
                                          :figwheel-options
-                                         :builds} any?)))
+                                         :builds
+                                         :run-options} any?)))
+
+(s/def :run-options/ios map?)
+(s/def :run-options/android map?)
+(s/def :run-options/default map?)
+(s/def :config/run-options (s/merge (s/keys :opt-un [:run-options/ios
+                                                     :run-options/android
+                                                     :run-options/default])
+                                    (s/map-of #{:ios :android :default} any?)))
 
 (s/def :config/name (and not-empty-string? #(re-matches #"^[A-Z][A-Za-z0-9]+$" %)))
 (s/def :config/js-modules (s/coll-of not-empty-string?))

@@ -10,7 +10,8 @@
 
 (defn exec
   [command]
-  (let [process (.exec (Runtime/getRuntime) (into-array (str/split command #" ")))]
+  (println command)
+  (let [process (.exec (Runtime/getRuntime) (into-array command))]
     (with-open [reader (io/reader (.getInputStream process))]
       (doseq [line (line-seq reader)]
         (println line)))))

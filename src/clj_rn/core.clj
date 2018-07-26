@@ -173,15 +173,24 @@
 (defn- execute-react-native-cli
   ([command] (execute-react-native-cli command false))
   ([command async?]
-   (let [full-command (str "node " react-native-cli " " command)]
+   (let [full-command (concat ["node" react-native-cli] command)]
      (if async?
        (future (shell/exec full-command))
        (shell/exec full-command)))))
 
+(defn- get-run-options
+  [config platform]
+  (reduce
+   #(conj %1 (str "--" (name (first %2))) (second %2))
+   []
+   (merge (get-in config [:run-options :default]) (get-in config [:run-options platform]))))
+
 (defn- run-builds
-  [build-ids]
+  [build-ids config]
   (doseq [build-id build-ids]
-    (execute-react-native-cli (str "run-" (name build-id)))))
+    (let [run-options (get-run-options config build-id)
+          command (cons (str "run-" (name build-id)) run-options)]
+      (execute-react-native-cli command))))
 
 (defn- check-react-native-instalation []
   (when-not (.exists (io/file react-native-cli))
@@ -190,20 +199,20 @@
 
 (defn watch
   [{:keys [build-ids android-device ios-device start-figwheel start-app start-cljs-repl]}]
-  (let [{:keys [figwheel-options builds]} (get-main-config)
+  (let [{:keys [figwheel-options builds] :as config} (get-main-config)
         hosts-map {:android (resolve-dev-host :android android-device)
                    :ios     (resolve-dev-host :ios ios-device)}]
     (check-react-native-instalation)
     (enable-source-maps)
     (write-env-dev hosts-map)
     (rebuild-index-files build-ids hosts-map)
-    (execute-react-native-cli "start" true)
+    (execute-react-native-cli ["start"] true)
     (when start-figwheel
       (ra/start-figwheel!
        {:build-ids build-ids
         :all-builds builds
         :figwheel-options figwheel-options}))
-    (when start-app (run-builds build-ids))
+    (when start-app (run-builds build-ids config))
     (when (and start-figwheel start-cljs-repl)
       (ra/cljs-repl)
       (when (:nrepl-port figwheel-options)
