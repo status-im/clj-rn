@@ -198,7 +198,7 @@
     (System/exit 1)))
 
 (defn watch
-  [{:keys [build-ids android-device ios-device start-figwheel start-app start-cljs-repl]}]
+  [{:keys [build-ids android-device ios-device start-figwheel start-app start-cljs-repl start-bundler]}]
   (let [{:keys [figwheel-options builds] :as config} (get-main-config)
         hosts-map {:android (resolve-dev-host :android android-device)
                    :ios     (resolve-dev-host :ios ios-device)}]
@@ -206,7 +206,8 @@
     (enable-source-maps)
     (write-env-dev hosts-map)
     (rebuild-index-files build-ids hosts-map)
-    (execute-react-native-cli ["start"] true)
+    (when start-bundler
+      (execute-react-native-cli ["start"] true))
     (when start-figwheel
       (ra/start-figwheel!
        {:build-ids build-ids
