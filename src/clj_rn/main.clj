@@ -103,7 +103,8 @@
   (with-common-options
     [[nil "--[no-]start-app" "Start `react-native run-*` or not" :default true]
      [nil "--[no-]start-figwheel" "Start Figwheel or not" :default true]
-     [nil "--[no-]start-cljs-repl" "Start cljs repl or not" :default true]]))
+     [nil "--[no-]start-cljs-repl" "Start cljs repl or not" :default true]
+     [nil "--[no-]start-bundler" "Start RN bundler or not" :default true]]))
 
 (defmethod task :watch [[_ & args]]
   (let [options (parse-cli-options args watch-task-options)]
