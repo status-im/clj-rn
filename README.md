@@ -11,7 +11,7 @@ clj -R:dev -m clj-rn.main help
 
 enable-source-maps  Patches RN packager to server *.map files from filesystem, so that chrome can download them.
 rebuild-index      Generate index.*.js for development with figwheel
-watch             Start development
+watch             Start figwheel and cljs repl
 help              Show this help
 ```
 
@@ -25,6 +25,7 @@ clj -R:dev -m clj-rn.main watch -h
     --[no-]start-app               Start `react-native run-*` or not
     --[no-]start-figwheel           Start Figwheel or not
     --[no-]start-cljs-repl           Start cljs repl or not
+    --[no-]start-bundler           Start React Native Metro bundler or not
 -h, --help
 ```
 
@@ -32,14 +33,21 @@ clj -R:dev -m clj-rn.main watch -h
 
 1. Create `deps.edn` file and add `clj-rn` as dependency. More about how to use git libraries here https://clojure.org/guides/deps_and_cli#_using_git_libraries
 2. Create `clj-rn.conf.edn`. See example [clj-rn.conf.example.edn](clj-rn.conf.example.edn)
-3. Run `clj -R:dev -m clj-rn.main watch -p ios -i simulator` to start development
+3. Run `clj -R:dev -m clj-rn.main watch -p ios -i simulator` to start Figwheel and cljs repl
 
 **Example usage**
 
-```
-$ clj -R:dev -m clj-rn.main watch -p android,ios -a genymotion -i real
+Run `watch` task which also starts Figwheel and cljs repl:
 
 ```
+clj -R:dev -m clj-rn.main watch -p android,ios -a genymotion -i real
+
+```
+
+Start React Native bundler `react-native start`
+
+Now you can run app `react-native run-android` or `react-native run-ios`
+
 
 ## Possible config options
 
