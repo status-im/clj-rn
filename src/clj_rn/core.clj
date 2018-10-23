@@ -94,6 +94,9 @@
     "localhost"
     (get-lan-ip)))
 
+(defmethod resolve-dev-host :desktop [_ _]
+  "localhost")
+
 (defn write-env-dev [hosts-map & [figwheel-port]]
   (-> "(ns env.config)\n\n(def figwheel-urls %s)"
       (format (-> (into {}
@@ -123,9 +126,9 @@
   (str/join ";" (map #(str "modules['" % "']=require('" % "')") modules)))
 
 (defn rebuild-index-js
-  [platform {:keys [app-name host-ip js-modules resource-dirs figwheel-bridge]}]
-  (let [target-file (str "index." (if (= :ios platform) "ios" "android")  ".js")
-        modules (get-modules resource-dirs js-modules)]
+  [platform {:keys [app-name host-ip js-modules desktop-modules resource-dirs figwheel-bridge]}]
+  (let [target-file (str "index." (name platform)  ".js")
+        modules (get-modules resource-dirs (if (= platform :desktop) desktop-modules js-modules))]
     (try
       (spit
        target-file
@@ -151,14 +154,19 @@
 
 (defn rebuild-index-files
   [build-ids hosts-map]
-  (let [{:keys [js-modules name resource-dirs figwheel-bridge]} (get-main-config)]
+  (let [{:keys [js-modules desktop-modules name resource-dirs figwheel-bridge]} (get-main-config)]
     (when-not figwheel-bridge (copy-figwheel-bridge))
     (doseq [build-id build-ids
             :let [host-ip (get hosts-map build-id)
-                  platform-name (if (= build-id :ios) "iOS" "Android")]]
+                  platform-name (case build-id
+                                  :ios "iOS"
+                                  :android "Android"
+                                  :desktop "Desktop"
+                                  "Unknown")]]
       (rebuild-index-js build-id {:app-name        name
                                   :host-ip         host-ip
                                   :js-modules      js-modules
+                                  :desktop-modules desktop-modules
                                   :resource-dirs   resource-dirs
                                   :figwheel-bridge figwheel-bridge})
       (when (= build-id :ios)
@@ -201,7 +209,8 @@
   [{:keys [build-ids android-device ios-device start-figwheel start-app start-cljs-repl start-bundler]}]
   (let [{:keys [figwheel-options builds] :as config} (get-main-config)
         hosts-map {:android (resolve-dev-host :android android-device)
-                   :ios     (resolve-dev-host :ios ios-device)}]
+                   :ios     (resolve-dev-host :ios ios-device)
+                   :desktop (resolve-dev-host :desktop nil)}]
     (check-react-native-instalation)
     (enable-source-maps)
     (write-env-dev hosts-map)
