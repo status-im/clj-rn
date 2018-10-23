@@ -44,7 +44,7 @@
     :parse-fn #(->> (.split % ",")
                     (map (comp keyword str/lower-case str/trim))
                     vec)
-    :validate [(fn [build-ids] (every? #(some? (#{:android :ios} %)) build-ids)) "Must be \"android\", and/or \"ios\""]]
+    :validate [(fn [build-ids] (every? #(some? (#{:android :ios :desktop} %)) build-ids)) "Must be \"android\", \"ios\" and/or \"desktop\""]]
    ["-a" "--android-device TYPE" "Android Device Type <avd|genymotion|real>"
     :id       :android-device
     :parse-fn #(keyword (str/lower-case %))
@@ -93,7 +93,8 @@
                 ios-device
                 figwheel-port]}   (parse-cli-options args rebuild-index-task-options)
         hosts-map                 {:android (core/resolve-dev-host :android android-device)
-                                   :ios     (core/resolve-dev-host :ios ios-device)}]
+                                   :ios     (core/resolve-dev-host :ios ios-device)
+                                   :desktop (core/resolve-dev-host :desktop nil)}]
     (core/write-env-dev hosts-map figwheel-port)
     (core/rebuild-index-files build-ids hosts-map)))
 
