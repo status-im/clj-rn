@@ -7,7 +7,7 @@ A utility for building ClojureScript-based React Native apps
 This small lib provides ability to start development with just one command and some basic functionality that re-natal has: `enable-source-maps` and `rebuild-index`, which is equivalence of re-natal's `enable-source-maps`, `use-*-device`, `use-figwheel`.
 
 ```
-clj -R:dev -m clj-rn.main help
+clj -m clj-rn.main help
 
 enable-source-maps  Patches RN packager to server *.map files from filesystem, so that chrome can download them.
 rebuild-index      Generate index.*.js for development with figwheel
@@ -17,7 +17,7 @@ help              Show this help
 
 `watch` has the following options:
 ```
-clj -R:dev -m clj-rn.main watch -h
+clj -m clj-rn.main watch -h
 
 -p, --platform BUILD-IDS [:android]  Platform Build IDs <android|ios>
 -a, --android-device TYPE           Android Device Type <avd|genymotion|real>
