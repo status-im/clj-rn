@@ -36,7 +36,7 @@
 (s/def :config/name (and not-empty-string? #(re-matches #"^[A-Z][A-Za-z0-9]+$" %)))
 (s/def :config/js-modules (s/coll-of not-empty-string?))
 (s/def :config/desktop-modules (s/coll-of not-empty-string?))
-(s/def :config/resource-dirs (s/coll-of not-empty-string?))
+(s/def :config/resource-dirs (s/coll-of (s/or not-empty-string? map?)))
 (s/def :config/figwheel-bridge not-empty-string?)
 (s/def :config/figwheel-options map?)
 (s/def :config/builds (s/coll-of map?))

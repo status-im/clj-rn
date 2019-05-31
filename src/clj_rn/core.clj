@@ -109,14 +109,18 @@
 (defn get-modules
   [resource-dirs js-modules]
   (->> (for [dir resource-dirs]
-         (->> (file-seq (io/file dir))
-              (filter #(and (not (re-find #"DS_Store" (str %)))
-                            (.isFile %)))
-              (map (fn [file] (when-let [unix-path (->> file .toPath .iterator iterator-seq (str/join "/"))]
-                                (-> (str "./" unix-path)
-                                    (str/replace "\\" "/")
-                                    (str/replace "@2x" "")
-                                    (str/replace "@3x" "")))))))
+         (let [{:keys [path prefix]} (if (map? dir)
+                                       dir
+                                       {:path   dir
+                                        :prefix "./"})]
+          (->> (file-seq (io/file path))
+               (filter #(and (not (re-find #"DS_Store" (str %)))
+                             (.isFile %)))
+               (map (fn [file] (when-let [unix-path (->> file .toPath .iterator iterator-seq (str/join "/"))]
+                                 (-> (str prefix unix-path)
+                                     (str/replace "\\" "/")
+                                     (str/replace "@2x" "")
+                                     (str/replace "@3x" ""))))))))
        flatten
        (concat js-modules ["react" "react-native" "create-react-class"])
        distinct))
