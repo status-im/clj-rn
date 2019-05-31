@@ -108,22 +108,36 @@
 
 (defn get-modules
   [resource-dirs js-modules]
-  (->> (for [dir resource-dirs]
-         (->> (file-seq (io/file dir))
-              (filter #(and (not (re-find #"DS_Store" (str %)))
-                            (.isFile %)))
-              (map (fn [file] (when-let [unix-path (->> file .toPath .iterator iterator-seq (str/join "/"))]
-                                (-> (str "./" unix-path)
-                                    (str/replace "\\" "/")
-                                    (str/replace "@2x" "")
-                                    (str/replace "@3x" "")))))))
-       flatten
+  (->> (mapcat
+        (fn [dir]
+          (let [{:keys [path prefix]} (if (map? dir)
+                                        dir
+                                        {:path   dir
+                                         :prefix "./"})]
+            (->> (file-seq (io/file path))
+                 (filter #(and (not (re-find #"DS_Store" (str %)))
+                               (.isFile %)))
+                 (map (fn [file] (when-let [unix-path (->> file .toPath .iterator iterator-seq (str/join "/"))]
+                                   [(-> (str prefix unix-path)
+                                        (str/replace "\\" "/")
+                                        (str/replace "@2x" "")
+                                        (str/replace "@3x" ""))
+                                    (-> (str "./" unix-path)
+                                        (str/replace "\\" "/")
+                                        (str/replace "@2x" "")
+                                        (str/replace "@3x" ""))]))))))
+        resource-dirs)
        (concat js-modules ["react" "react-native" "create-react-class"])
        distinct))
 
 (defn generate-modules-map
   [modules]
-  (str/join ";" (map #(str "modules['" % "']=require('" % "')") modules)))
+  (str/join ";" (map (fn [module]
+                       (let [[module-name path] (if (vector? module)
+                                                  module
+                                                  [module module])]
+                         (str "modules['" module-name "']=require('" path "')")))
+                     modules)))
 
 (defn rebuild-index-js
   [platform {:keys [app-name host-ip js-modules desktop-modules resource-dirs figwheel-bridge]}]
